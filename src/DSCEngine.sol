@@ -23,6 +23,8 @@
 // SPDX-License-Identifier: MIT
 
 pragma solidity ^0.8.19;
+import {DecentralizedStableCoin} from "./DecentralizedStableCoin.sol";
+import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
 /*
  * @title DSCEngine
@@ -43,7 +45,7 @@ pragma solidity ^0.8.19;
  * for minting and redeeming DSC, as well as depositing and withdrawing collateral.
  * @notice This contract is based on the MakerDAO DSS system
  */
-contract DSCEngine {
+contract DSCEngine is ReentrancyGuard {
     ///////////////////
     // Errors
     ///////////////////
@@ -59,6 +61,7 @@ contract DSCEngine {
     ///////////////////
     // State Variables
     ///////////////////
+    DecentralizedStableCoin private immutable i_dsc;
     uint256 private constant LIQUIDATION_THRESHOLD = 50; // This means you need to be 200% over-collateralized
     uint256 private constant LIQUIDATION_BONUS = 10; // This means you get assets at a 10% discount when liquidating
     uint256 private constant LIQUIDATION_PRECISION = 100;
@@ -87,12 +90,20 @@ contract DSCEngine {
         _;
     }
 
+    modifier isAllowedToken(address tokenAddress) {
+        if (s_priceFeeds[tokenAddress] == address(0)) {
+            revert DSCEngine__TokenNotAllowed(tokenAddress);
+        }
+        _;
+    }
+
     ///////////////////
     // Functions
     ///////////////////
     constructor(
         address[] memory tokenAddresses,
-        address[] memory priceFeedAddresses
+        address[] memory priceFeedAddresses,
+        address dscAddress
     ) {
         if (tokenAddresses.length != priceFeedAddresses.length) {
             revert DSCEngine__TokenAddressesAndPriceFeedAddressesAmountsDontMatch();
@@ -100,6 +111,7 @@ contract DSCEngine {
         for (uint256 i = 0; i < tokenAddresses.length; i++) {
             s_priceFeeds[tokenAddresses[i]] = priceFeedAddresses[i];
         }
+        i_dsc = DecentralizedStableCoin(dscAddress);
     }
 
     ///////////////////
@@ -117,7 +129,12 @@ contract DSCEngine {
     function depositCollateral(
         address tokenCollateralAddress,
         uint256 amountCollateral
-    ) external moreThanZero(amountCollateral) {
+    )
+        external
+        moreThanZero(amountCollateral)
+        isAllowedToken(tokenCollateralAddress)
+        nonReentrant
+    {
         // Logic for depositing collateral
     }
 

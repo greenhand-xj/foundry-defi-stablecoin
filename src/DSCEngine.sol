@@ -119,9 +119,9 @@ contract DSCEngine is ReentrancyGuard {
         i_dsc = DecentralizedStableCoin(dscAddress);
     }
 
-    ///////////////////
-    // External Functions
-    ///////////////////
+    ///////////////////////////////
+    // External / Public Functions
+    //////////////////////////////
 
     /*
     * @param tokenCollateralAddress: The ERC20 token address of the collateral you're depositing
@@ -159,12 +159,39 @@ contract DSCEngine is ReentrancyGuard {
         }
     }
 
-    function redeemCollateralForDsc() external {
-        // Logic for redeeming collateral
+    /*
+    * @param tokenCollateralAddress: The ERC20 token address of the collateral you're withdrawing
+    * @param amountCollateral: The amount of collateral you're withdrawing
+    * @param amountDscToBurn: The amount of DSC you want to burn
+    * @notice This function will withdraw your collateral and burn DSC in one transaction
+    */
+    function redeemCollateralForDsc(address tokenCollateralAddress, uint256 amountCollateral, uint256 amountDscToBurn)
+        public
+    {
+        burnDsc(amountDscToBurn);
+        redeemCollateral(tokenCollateralAddress, amountCollateral);
+        // redeemCollateral will check health factor at the end, so we don't need to check it here again
     }
 
-    function redeemCollateral() external {
-        // Logic for redeeming collateral
+    /*
+     * @param tokenCollateralAddress: The ERC20 token address of the collateral you're redeeming
+     * @param amountCollateral: The amount of collateral you're redeeming
+     * @notice This function will redeem your collateral.
+     * @notice If you have DSC minted, you will not be able to redeem until you burn your DSC
+     */
+    function redeemCollateral(address tokenCollateralAddress, uint256 amountCollateral)
+        public
+        moreThanZero(amountCollateral)
+        nonReentrant
+    {
+        s_collateralDeposited[msg.sender][tokenCollateralAddress] -= amountCollateral;
+        //TODO: fix it
+        // emit CollateralRedeemed(msg.sender, tokenCollateralAddress, amountCollateral);
+        bool success = IERC20(tokenCollateralAddress).transfer(msg.sender, amountCollateral);
+        if (!success) {
+            revert DSCEngine__TransferFailed();
+        }
+        _revertIfHealthFactorIsBroken(msg.sender);
     }
 
     /*
@@ -180,8 +207,14 @@ contract DSCEngine is ReentrancyGuard {
         }
     }
 
-    function burnDsc() external {
-        // Logic for burning DSC
+    function burnDsc(uint256 amount) public moreThanZero(amount) {
+        s_DSCMinted[msg.sender] -= amount;
+        bool success = i_dsc.transferFrom(msg.sender, address(this), amount);
+        if (!success) {
+            revert DSCEngine__TransferFailed();
+        }
+        // _revertIfHealthFactorIsBroken(msg.sender);
+        i_dsc.burn(amount);
     }
 
     function liquidate() external {

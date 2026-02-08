@@ -123,8 +123,19 @@ contract DSCEngine is ReentrancyGuard {
     // External Functions
     ///////////////////
 
-    function depositCollateralAndMintDsc() external {
-        // Logic for depositing collateral
+    /*
+    * @param tokenCollateralAddress: The ERC20 token address of the collateral you're depositing
+    * @param amountCollateral: The amount of collateral you're depositing
+    * @param amountDscToMint: The amount of DSC you want to mint
+    * @notice This function will deposit your collateral and mint DSC in one transaction
+    */
+    function depositCollateralAndMintDsc(
+        address tokenCollateralAddress,
+        uint256 amountCollateral,
+        uint256 amountDscToMint
+    ) external {
+        depositCollateral(tokenCollateralAddress, amountCollateral);
+        mintDsc(amountDscToMint);
     }
 
     /*
@@ -132,7 +143,7 @@ contract DSCEngine is ReentrancyGuard {
      * @param amountCollateral: The amount of collateral you're depositing
      */
     function depositCollateral(address tokenCollateralAddress, uint256 amountCollateral)
-        external
+        public
         moreThanZero(amountCollateral)
         isAllowedToken(tokenCollateralAddress)
         nonReentrant
@@ -160,7 +171,7 @@ contract DSCEngine is ReentrancyGuard {
      * @param amountDscToMint: The amount of DSC you want to mint
      * You can only mint DSC if you have enough collateral
      */
-    function mintDsc(uint256 amountDscToMint) external moreThanZero(amountDscToMint) nonReentrant {
+    function mintDsc(uint256 amountDscToMint) public moreThanZero(amountDscToMint) nonReentrant {
         s_DSCMinted[msg.sender] += amountDscToMint;
         _revertIfHealthFactorIsBroken(msg.sender);
         bool minted = i_dsc.mint(msg.sender, amountDscToMint);
@@ -185,7 +196,8 @@ contract DSCEngine is ReentrancyGuard {
     // Private & Internal View & Pure Functions
     //////////////////////////////
 
-    function _getUsdValue(address token, uint256 amount) private view returns (uint256) {
+    // just for testing purpose, made it public
+    function _getUsdValue(address token, uint256 amount) public view returns (uint256) {
         AggregatorV3Interface priceFeed = AggregatorV3Interface(s_priceFeeds[token]);
         (, int256 answer,,,) = priceFeed.latestRoundData();
         // 1 ETH = 1000 USD

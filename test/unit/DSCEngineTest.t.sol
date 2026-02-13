@@ -66,13 +66,13 @@ contract DSCEngineTest is Test {
         priceFeedAddress.push(btcUsdPriceFeed);
 
         vm.expectRevert(DSCEngine.DSCEngine__TokenAddressesAndPriceFeedAddressesAmountsDontMatch.selector);
-        new DSCEngine(tokenAddresses,priceFeedAddress,address(dsc));
+        new DSCEngine(tokenAddresses, priceFeedAddress, address(dsc));
     }
 
     //////////////////
     // Price Tests //
     //////////////////
-    
+
     function testGetTokenAmountFromUsd() public {
         // If we want $100 of WETH @ $2000/WETH, that would be 0.05 WETH
         uint256 expectedWeth = 0.05 ether;
@@ -97,6 +97,14 @@ contract DSCEngineTest is Test {
 
         vm.expectRevert(DSCEngine.DSCEngine__NeedsMoreThanZero.selector);
         dsce.depositCollateral(weth, 0);
+        vm.stopPrank();
+    }
+
+    function testRevertsWithUnapprovedCollateral() public {
+        ERC20Mock randToken = new ERC20Mock("RAN", "RAN", user, 100e18);
+        vm.startPrank(user);
+        vm.expectRevert(abi.encodeWithSelector(DSCEngine.DSCEngine__TokenNotAllowed.selector, address(randToken)));
+        dsce.depositCollateral(address(randToken), amountCollateral);
         vm.stopPrank();
     }
 }

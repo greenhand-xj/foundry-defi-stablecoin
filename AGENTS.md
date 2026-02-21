@@ -2,244 +2,114 @@
 
 ## Overview
 
-This is a Foundry-based Solidity project implementing a Decentralized Stable Coin (DSC) system. The system maintains a 1 token = $1 peg using overcollateralization with WETH and WBTC as collateral. The codebase follows specific layout and naming conventions documented within each contract.
+Foundry-based Solidity project implementing a Decentralized Stable Coin (DSC) system with 1 token = $1 peg using overcollateralization (WETH/WBTC).
 
 ## Build, Lint, and Test Commands
 
-### Core Commands
-
 ```bash
-# Build the project
-forge build
-
-# Build with contract size information
-forge build --sizes
-
-# Run all tests with verbose output
-forge test -vvv
-
-# Run a single test function
-forge test --match-test testFunctionName -vvv
-
-# Run tests matching a contract name
-forge test --match-contract DSCEngineTest -vvv
-
-# Run tests in a specific file
-forge test --match-path test/DSCEngine.t.sol -vvv
-
-# Format all Solidity files
-forge fmt
-
-# Check formatting without applying changes
-forge fmt --check
-
-# Generate gas snapshots
-forge snapshot
-
-# Show help for forge commands
-forge --help
-```
-
-### CI/CD Commands (from .github/workflows/test.yml)
-
-```bash
-# Format check (used in CI)
-forge fmt --check
-
-# Build with sizes (used in CI)
-forge build --sizes
-
-# Tests with verbose output (used in CI)
-forge test -vvv
-```
-
-### Additional Utilities
-
-```bash
-# Start local Ethereum node
-anvil
-
-# Cast commands for interacting with contracts
-cast <subcommand>
-
-# Solidity REPL
-chisel
-
-# Deploy a contract
-forge script script/Deploy.s.sol:DeployScript --rpc-url <RPC_URL> --private-key <PRIVATE_KEY>
+forge build                    # Build the project
+forge build --sizes            # Build with contract sizes
+forge test -vvv                # Run all tests with verbose output
+forge test --match-test testFunctionName -vvv    # Run single test function
+forge test --match-contract DSCEngineTest -vvv   # Run tests by contract name
+forge test --match-path test/unit/DSCEngineTest.t.sol -vvv  # Run tests in file
+forge fmt                      # Format all Solidity files
+forge fmt --check              # Check formatting without applying
+forge snapshot                 # Generate gas snapshots
+anvil                          # Start local Ethereum node
+forge script script/DeployDSC.s.sol:DeployDSC --rpc-url <RPC_URL> --private-key <KEY>  # Deploy
 ```
 
 ## Code Style Guidelines
 
-### Contract Layout (in this exact order)
+### Contract Layout (exact order)
 
-1. Version pragma
-2. Imports
-3. Custom errors
-4. Interfaces, libraries, contracts
-5. Type declarations
-6. State variables
-7. Events
-8. Modifiers
-9. Functions
+1. Version pragma  2. Imports  3. Custom errors  4. Interfaces/libraries/contracts
+5. Type declarations  6. State variables  7. Events  8. Modifiers  9. Functions
 
-```solidity
-// SPDX-License-Identifier: MIT
-pragma solidity ^0.8.19;
+### Function Layout (exact order)
 
-import {ERC20Burnable, ERC20} from "@openzeppelin/contracts/token/ERC20/extensions/ERC20Burnable.sol";
+1. Constructor  2. Receive  3. Fallback  4. External  5. Public
+6. Internal  7. Private  8. Internal/private view/pure  9. External/public view/pure
 
-error CustomError__Reason();
-
-contract Example {
-    // Types
-    struct Position { }
-
-    // State variables
-    uint256 private constant CONSTANT = 1e18;
-
-    // Events
-    event EventName(address indexed user);
-
-    // Modifiers
-    modifier onlyOwner() { }
-
-    // Functions
-    constructor() { }
-    function externalFunction() external { }
-    function internalFunction() internal { }
-}
-```
-
-### Function Layout (in this exact order)
-
-1. Constructor
-2. Receive function (if exists)
-3. Fallback function (if exists)
-4. External functions
-5. Public functions
-6. Internal functions
-7. Private functions
-8. Internal & private view/pure functions
-9. External & public view/pure functions
-
-### Import Conventions
-
-- Use OpenZeppelin imports via remapping: `@openzeppelin/contracts/...`
-- Remapping is configured in foundry.toml: `@openzeppelin/contracts/=lib/openzeppelin-contracts/contracts/`
-- Import with specific symbols when possible to reduce bytecode
+### Imports
 
 ```solidity
 import {ERC20Burnable, ERC20} from "@openzeppelin/contracts/token/ERC20/extensions/ERC20Burnable.sol";
-import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+import {AggregatorV3Interface} from "@chainlink/contracts/src/v0.8/shared/interfaces/AggregatorV3Interface.sol";
 ```
+
+Remappings configured in `foundry.toml`:
+- `@openzeppelin/contracts/=lib/openzeppelin-contracts/contracts/`
+- `@chainlink/contracts=lib/chainlink-brownie-contracts/contracts`
 
 ### Naming Conventions
 
-- **Contracts**: PascalCase (e.g., `DSCEngine`, `DecentralizedStableCoin`)
-- **Interfaces**: Prefixed with `I` (e.g., `IERC20`)
-- **Libraries**: PascalCase (e.g., `Math`)
-- **Structs**: PascalCase (e.g., `UserPosition`)
-- **Events**: PascalCase with noun-verb structure (e.g., `CollateralDeposited`)
-- **Custom Errors**: `ContractName__ErrorReason` format
-- **State Variables**: 
-  - Private/immutable: `s_` or `i_` prefix (e.g., `s_collateralDeposited`, `i_dsc`)
-  - Constants: `UPPER_CASE_WITH_UNDERSCORES`
-  - Public: No prefix
-- **Functions**: camelCase (e.g., `depositCollateral`, `getHealthFactor`)
-- **Parameters**: camelCase (e.g., `tokenCollateralAddress`, `amountCollateral`)
-- **Local Variables**: camelCase
+| Element | Convention | Example |
+|---------|------------|---------|
+| Contracts | PascalCase | `DSCEngine`, `DecentralizedStableCoin` |
+| Interfaces | `I` prefix | `IERC20` |
+| Errors | `ContractName__ErrorReason` | `DSCEngine__NeedsMoreThanZero` |
+| Events | PascalCase noun-verb | `CollateralDeposited` |
+| Private/immutable vars | `s_`/`i_` prefix | `s_collateralDeposited`, `i_dsc` |
+| Constants | UPPER_SNAKE_CASE | `MIN_HEALTH_FACTOR` |
+| Functions | camelCase | `depositCollateral` |
+| Parameters | camelCase | `tokenCollateralAddress` |
 
-### Custom Errors
-
-Use custom errors instead of require statements for better gas efficiency and readability.
+### Custom Errors (over require)
 
 ```solidity
 error DSCEngine__NeedsMoreThanZero();
-error DSCEngine__TransferFailed();
 error DSCEngine__BreaksHealthFactor(uint256 healthFactorValue);
 ```
 
-### Type Conventions
+### Types
 
-- Use `uint256` explicitly instead of `uint`
-- Use `address` for addresses, `address payable` for addresses that need to receive ETH
+- Use `uint256` explicitly (never `uint`)
 - Use `int256` for signed integers
-- Use `bytes32` for fixed-size bytes
-- Constants should be `uint256 private constant`
-- Precision constants typically use `1e18` base
+- Precision constants: `uint256 private constant PRECISION = 1e18;`
 
-### Visibility Order
+### State Variable Order
 
-Declare visibility in this order: `public` → `external` → `internal` → `private`
+1. Immutables (`i_` prefix)  2. Constants (`UPPER_CASE`)  3. Private (`s_` prefix)  4. Public  5. Internal
 
-### State Variable Visibility
-
-Order state variables by type and visibility:
-1. Immutables (`i_` prefix)
-2. Constants (`UPPER_CASE`)
-3. Private (`s_` prefix)
-4. Public
-5. Internal
-
-### Health Factor Validation
-
-When modifying user positions, always validate health factor:
+### Reentrancy Protection (CEI Pattern)
 
 ```solidity
-if (_healthFactor < MIN_HEALTH_FACTOR) {
-    revert DSCEngine__BreaksHealthFactor(_healthFactor);
-}
-```
-
-### Reentrancy Protection
-
-Use CEI pattern (Checks, Effects, Interactions) for all external calls:
-
-```solidity
-function withdrawCollateral(address token, uint256 amount) external moreThanZero(amount) {
+function withdrawCollateral(address token, uint256 amount) external {
     // Checks
-    if (s_collateralDeposited[msg.sender][token] < amount) {
-        revert NotEnoughCollateral();
-    }
-
+    if (s_collateralDeposited[msg.sender][token] < amount) revert NotEnoughCollateral();
     // Effects
     s_collateralDeposited[msg.sender][token] -= amount;
-
     // Interactions
     bool success = IERC20(token).transfer(msg.sender, amount);
     if (!success) revert TransferFailed();
 }
 ```
 
-### Precision Handling
+### Health Factor Validation
 
-When working with prices or ratios:
-- Use `uint256` with appropriate precision (typically `1e18` or `1e8`)
-- Define precision constants at top of contract
-- Be careful with multiplication/division order to avoid precision loss
+Always validate health factor after modifying user positions:
 
 ```solidity
-uint256 private constant PRECISION = 1e18;
-uint256 private constant FEED_PRECISION = 1e8;
-uint256 private constant ADDITIONAL_FEED_PRECISION = 1e10;
+if (userHealthFactor < MIN_HEALTH_FACTOR) {
+    revert DSCEngine__BreaksHealthFactor(userHealthFactor);
+}
 ```
 
-### Liquidation Logic
+### Testing
 
-- Liquidation threshold: typically 50 (200% overcollateralized)
-- Liquidation bonus: typically 10 (10% discount for liquidators)
-- Always validate health factor after position changes
+```solidity
+vm.startPrank(user);
+vm.expectRevert(DSCEngine.DSCEngine__NeedsMoreThanZero.selector);
+dsce.depositCollateral(weth, 0);
+vm.stopPrank();
+```
 
-### Testing Guidelines
-
-- Use `vm.startPrank(address)` and `vm.stopPrank()` for testing different actors
-- Use `deal(address, uint256)` to give test tokens
-- Use `deployCode(string memory, bytes memory)` or script deployments
-- Test both success and failure cases
+- Use `vm.startPrank(address)`/`vm.stopPrank()` for different actors
 - Use `vm.expectRevert()` for testing reverts
+- Test both success and failure cases
 
 ### Solidity Version
 
-- Current pragma: `^0.8.19`
-- Do not use versions below 0.8.19 (safety and convenience features)
+Current pragma: `^0.8.19` - do not use versions below 0.8.19
